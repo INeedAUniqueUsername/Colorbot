@@ -144,7 +144,7 @@ public class SlashCommands : SlashCommandModule {
         }
 
 
-        var str = new ColoredString(text, Color.White, Color.Transparent);
+        var str = new ColoredString(text, Color.White, Color.Black);
         int line = Math.Min(str.Length, 32);
         var s = new Console(line, 1 + (str.Length - 1) / 32);
 
