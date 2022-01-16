@@ -1,6 +1,18 @@
 # Colorbot
 This Discord bot uses SadConsole to render colored messages
 
+## Commands
+- `/sendf <format>` Sends color-formatted message
+- `/sendc <color> <text>` Sends simple-colored message
+- `/sendr <text>` Sends rainbow-colored message
+
+### Color Syntax
+Color syntax is provided by SadConsole.
+- `[c:r f:<color>]` Set foreground color
+- `[c:r b:<color>]` Set background color
+- `[c:m Horizontal]` Set horizontal mirror
+- `[c:m Vertical]` Set vertical mirror
+
 ## Installation
 
 ### Preliminary Discord Set Up
