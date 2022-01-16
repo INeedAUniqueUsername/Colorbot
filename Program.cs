@@ -16,9 +16,11 @@ using DSharpPlus.EventArgs;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Drawing;
+
 namespace ColorBot;
 public class Program {
-    public static List<(Console con, Action callback)> jobs=new();
+    public static List<Action> jobs=new();
     public DiscordClient discord;
     static void Main(string[] args) {
         var p = new Program();
@@ -58,8 +60,7 @@ public class HookConsole : Console {
     public HookConsole() : base(1, 1) { }
     public override void Render(TimeSpan delta) {
         foreach(var q in Program.jobs) {
-            q.con.Render(delta);
-            q.callback();
+            q();
         }
         Program.jobs.Clear();
         base.Render(delta);
@@ -140,12 +141,13 @@ public class SlashCommands : SlashCommandModule {
 
 
         var str = new ColoredString(text);
-        var s = new Console(Math.Min(str.Length, 32), 1 + str.Length / 32);
+        int line = Math.Min(str.Length, 32);
+        var s = new Console(line, 1 + str.Length / 32);
 
         //Apply rainbow
         int x = 0;
         foreach (var c in str) {
-            c.Foreground = Color.FromHSL((1f * x) / Math.Min(32, str.Length), 1, 0.7f);
+            c.Foreground = Color.FromHSL((float)(x%line) / line, 1, 0.7f);
             x++;
         }
         s.Print(0, 0, str);
@@ -155,14 +157,17 @@ public class SlashCommands : SlashCommandModule {
 
     public static void Add(InteractionContext ctx, Console s, ColoredString cs) {
         //Add the job to the queue
-        Program.jobs.Add((s, Done));
+        Program.jobs.Add(Done);
 
         void Done() {
+            s.Render(new());
             //Save image in memory stream (Async file operations are too slow)
             var t = ((ScreenSurfaceRenderer)s.Renderer)._backingTexture;
             var stream = new MemoryStream();
             t.SaveAsPng(stream, t.Bounds.Width, t.Bounds.Height);
             stream.Position = 0;
+
+            //var a = Image.FromStream(stream);
 
             //Send it
             ctx.EditResponseAsync(new DiscordWebhookBuilder()
