@@ -17,6 +17,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Drawing;
+using AnimatedGif;
+using Color = SadRogue.Primitives.Color;
+using SadConsole.Extensions;
 
 namespace ColorBot;
 public class Program {
@@ -75,6 +78,7 @@ public class SlashCommands : SlashCommandModule {
         [Choice("Green", "Green")]
         [Choice("Blue", "Blue")]
         [Choice("Cyan", "Cyan")]
+        [Choice("Violet", "Violet")]
         [Option("color", "Text color")] string color = null,
         [Option("text", "Plain message text")] string text = null
         ) {
@@ -106,9 +110,9 @@ public class SlashCommands : SlashCommandModule {
 
         //Render the text!!!!
         var str = new ColoredString(text, fore, Color.Black);
-        var s = new Console(Math.Min(text.Length, 32), 1 + text.Length/32);
+        var s = new Console(Math.Min(text.Length, 32), 1 + (text.Length - 1)/32);
         s.Print(0, 0, str);
-        Add(ctx, s, str);
+        AddPng(ctx, s, str);
     }
     [SlashCommand("sendf", "Send a color-formatted message")]
     public async Task sendFormat(InteractionContext ctx,
@@ -122,9 +126,9 @@ public class SlashCommands : SlashCommandModule {
             return;
         }
         var str = ColoredString.Parser.Parse(text);
-        var s = new Console(Math.Min(str.Length, 32), 1 + str.Length / 32);
+        var s = new Console(Math.Min(str.Length, 32), 1 + (str.Length - 1) / 32);
         s.Print(0, 0, str);
-        Add(ctx, s, str);
+        AddPng(ctx, s, str);
     }
     [SlashCommand("sendr", "Send a rainbow message")]
     public async Task sendRainbow(InteractionContext ctx,
@@ -140,9 +144,9 @@ public class SlashCommands : SlashCommandModule {
         }
 
 
-        var str = new ColoredString(text);
+        var str = new ColoredString(text, Color.White, Color.Transparent);
         int line = Math.Min(str.Length, 32);
-        var s = new Console(line, 1 + str.Length / 32);
+        var s = new Console(line, 1 + (str.Length - 1) / 32);
 
         //Apply rainbow
         int x = 0;
@@ -152,28 +156,55 @@ public class SlashCommands : SlashCommandModule {
         }
         s.Print(0, 0, str);
 
-        Add(ctx, s, str);
+        AddPng(ctx, s, str);
     }
 
-    public static void Add(InteractionContext ctx, Console s, ColoredString cs) {
+    public static void AddGif(InteractionContext ctx, Console s, ColoredString cs, int frames = 1) {
+        //Add the job to the queue
+        Program.jobs.Add(Done);
+
+        void Done() {
+            var result = new MemoryStream();
+            var g = new AnimatedGifCreator(result);
+
+            for(int i = 0; i < 30; i++) {
+                s.Render(new());
+                s.Update(new());
+                //Save image in memory stream (Async file operations are too slow)
+                var t = ((ScreenSurfaceRenderer)s.Renderer)._backingTexture;
+                var frame = new MemoryStream();
+                t.SaveAsPng(frame, t.Bounds.Width, t.Bounds.Height);
+                frame.Position = 0;
+                g.AddFrame(Image.FromStream(frame), 33);
+            }
+            result.Position = 0;
+
+            //Send it
+            ctx.EditResponseAsync(new DiscordWebhookBuilder()
+                //.WithUsername("aaaaa")
+                .AddFile($"{cs.String}.gif", result)
+                );
+        }
+    }
+    public static void AddPng(InteractionContext ctx, Console s, ColoredString cs) {
         //Add the job to the queue
         Program.jobs.Add(Done);
 
         void Done() {
             s.Render(new());
+            s.Update(new());
             //Save image in memory stream (Async file operations are too slow)
             var t = ((ScreenSurfaceRenderer)s.Renderer)._backingTexture;
-            var stream = new MemoryStream();
-            t.SaveAsPng(stream, t.Bounds.Width, t.Bounds.Height);
-            stream.Position = 0;
-
-            //var a = Image.FromStream(stream);
+            var frame = new MemoryStream();
+            t.SaveAsPng(frame, t.Bounds.Width, t.Bounds.Height);
+            frame.Position = 0;
 
             //Send it
             ctx.EditResponseAsync(new DiscordWebhookBuilder()
                 //.WithUsername("aaaaa")
-                .AddFile($"{cs.String}.png", stream)
+                .AddFile($"{cs.String}.png", frame)
                 );
         }
     }
+
 }
